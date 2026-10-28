@@ -21,6 +21,8 @@ import {
   incidentMetrics,
 } from "./incidents/api.ts";
 import { dispatchTask } from "./request-tasks.ts";
+import { operationsApi } from "./operations/api.ts";
+import { ProfileStore } from "./frontdoor/store.ts";
 export interface ApiEnv extends ProviderConfig {
   DB: D1Database;
   PROFILE_ENCRYPTION_KEY?: string;
@@ -71,9 +73,14 @@ export async function handleApi(
       if (body.role === "DEMO_CUSTOMER")
         assert(
           body.customer_id &&
-            (await store.list(owner)).some(
+            ((await store.list(owner)).some(
               (c) => c.customer_id === body.customer_id,
-            ),
+            ) ||
+              !!(await env.DB.prepare(
+                "SELECT id FROM b2c_customer_profiles WHERE id=? AND owner_id=?",
+              )
+                .bind(owner + ":" + body.customer_id, owner)
+                .first())),
           "INVALID_CUSTOMER",
           "Selectează un profil sintetic.",
         );
@@ -101,16 +108,32 @@ export async function handleApi(
         },
       );
     }
-    if (path.join("/") === "demo/profiles" && method === "GET")
-      return json(
-        (await store.list(owner)).map((c) => ({
-          customer_id: c.customer_id,
-          name: c.customer_name,
-          case_id: c.id,
-        })),
-      );
+    if (path.join("/") === "demo/profiles" && method === "GET") {
+      const all = (await store.list(owner)).map((c) => ({
+        customer_id: c.customer_id,
+        name: c.customer_name,
+        case_id: c.id,
+      }));
+      if (env.PROFILE_ENCRYPTION_KEY)
+        for (const p of await new ProfileStore(
+          env.DB,
+          env.PROFILE_ENCRYPTION_KEY,
+        ).list(owner))
+          if (all.some((c) => c.customer_id === p.id))
+            all.find((c) => c.customer_id === p.id)!.name = p.name;
+          else
+            all.push({
+              customer_id: p.id,
+              name: p.name,
+              case_id: p.linked_case_id,
+            });
+      return json(all);
+    }
     const isCustomer =
-      path[0] === "customer-requests" || path[0] === "incident-customer";
+      path[0] === "customer-requests" ||
+      path[0] === "incident-customer" ||
+      path[0] === "customer" ||
+      (path[0] === "contracts" && path[2] === "sign-mock");
     const cookie = request.headers.get("cookie") ?? "";
     const token = cookie
       .split(";")
@@ -147,6 +170,27 @@ export async function handleApi(
       return request.json();
     };
     const key = request.headers.get("Idempotency-Key") ?? "";
+    if (
+      [
+        "operations",
+        "workflows",
+        "clients",
+        "cases",
+        "customer",
+        "contracts",
+        "credits",
+        "approvals",
+      ].includes(path[0])
+    )
+      return await operationsApi(
+        request,
+        env.DB,
+        env.PROFILE_ENCRYPTION_KEY ?? "",
+        owner,
+        actor,
+        env,
+        await store.list(owner),
+      );
     if (path[0] === "incident-customer") {
       engine.authorize(["DEMO_CUSTOMER"]);
       return json(

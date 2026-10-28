@@ -51,6 +51,7 @@ import {
   type CustomerRequest,
 } from "../lib/incidents/domain";
 import { toolLabels } from "../lib/incidents/tools";
+import OperationsMobile from "./operations-mobile";
 type Profile = { customer_id: string; name: string; case_id: string };
 type Catalog = {
   id: string;
@@ -267,6 +268,7 @@ export default function IncidentCenter({
   const [newStatement, setNewStatement] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [mobileCustomer, setMobileCustomer] = useState("");
+  const [mobileChannel, setMobileChannel] = useState("incidents");
   const [mobileCases, setMobileCases] = useState<MobileCase[]>([]);
   const [mobileSelected, setMobileSelected] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -278,7 +280,9 @@ export default function IncidentCenter({
   const isAnalytics = path === "/b2c/analytics";
   const isDemo = path === "/b2c/demo";
   const isAudit = path === "/b2c/audit";
-  const caseId = path.match(/^\/b2c\/incidents\/([^/]+)$/)?.[1];
+  const caseId = isNew
+    ? undefined
+    : path.match(/^\/b2c\/incidents\/([^/]+)$/)?.[1];
   const api = async <T,>(endpoint: string, body?: unknown): Promise<T> => {
     const r = await fetch("/api/b2c/" + endpoint, {
       ...(body !== undefined
@@ -330,6 +334,11 @@ export default function IncidentCenter({
           new URLSearchParams(location.search).get("customer") ??
             customers[0]?.customer_id ??
             "",
+        );
+        setMobileChannel(
+          new URLSearchParams(location.search).get("channel") === "workflows"
+            ? "workflows"
+            : "incidents",
         );
         if (caseId) {
           const c = await api<Detail>("incidents/" + caseId);
@@ -575,7 +584,11 @@ export default function IncidentCenter({
           <div className="page-heading">
             <div>
               <div className="eyebrow">SMART MOBILE · SIMULATOR COMUN</div>
-              <h1>O singură conversație pentru incident.</h1>
+              <h1>
+                {mobileChannel === "workflows"
+                  ? "O singură conversație pentru toate dosarele."
+                  : "O singură conversație pentru incident."}
+              </h1>
               <p>
                 Clientul primește numai solicitări aprobate. Răspunsul revine
                 automat în orchestrator.
@@ -583,10 +596,18 @@ export default function IncidentCenter({
             </div>
             <button
               className="button"
-              onClick={() => onNavigate("/b2c/incidents")}
+              onClick={() =>
+                onNavigate(
+                  mobileChannel === "workflows"
+                    ? "/b2c/dashboard"
+                    : "/b2c/incidents",
+                )
+              }
             >
               <ArrowLeft size={15} />
-              Centrul de incidente
+              {mobileChannel === "workflows"
+                ? "Operations Hub"
+                : "Centrul de incidente"}
             </button>
           </div>
           <div className="pi-mobile-layout">
@@ -622,207 +643,230 @@ export default function IncidentCenter({
                   </option>
                 ))}
               </select>
-              <div className="pi-mobile-cases">
-                {mobileCases.map((c) => (
-                  <button
-                    key={c.id}
-                    className={c.id === mobileCase?.id ? "active" : ""}
-                    onClick={() => {
-                      setMobileSelected(c.id);
-                      setAnswers({});
-                      setAttachment(undefined);
-                    }}
-                  >
-                    <span>
-                      <strong>{c.reference}</strong>
-                      <small>
-                        {c.transaction?.descriptor ??
-                          "Tranzacție de clarificat"}
-                      </small>
-                    </span>
-                    <span className="counter">
-                      {c.requests.filter((r) => r.status === "PENDING").length}
-                    </span>
-                    <ChevronRight size={14} />
-                  </button>
-                ))}
+              <div className="ops-mobile-channels">
+                <button
+                  className={mobileChannel === "incidents" ? "active" : ""}
+                  onClick={() => setMobileChannel("incidents")}
+                >
+                  Incidente de plată
+                </button>
+                <button
+                  className={mobileChannel === "workflows" ? "active" : ""}
+                  onClick={() => setMobileChannel("workflows")}
+                >
+                  Dosare & semnare mock
+                </button>
               </div>
-            </aside>
-            <div className="phone pi-phone">
-              <div className="phone-top">
-                <span>9:41</span>
-                <span>● ▰ ▰</span>
-              </div>
-              <div className="phone-island" />
-              <div className="phone-content">
-                <div className="mobile-brand">
-                  <span className="brand-symbol small">
-                    <Network size={16} />
-                  </span>
-                  Payment Assist<span>DEMO</span>
-                </div>
-                <div className="mobile-greeting">
-                  Bună, {mobileCase?.customer_name.split(" ")[0] ?? "client"}.
-                </div>
-                <h2>
-                  Hai să clarificăm
-                  <br />
-                  incidentul tău.
-                </h2>
-                {mobileCase && (
-                  <div className="pi-mobile-transaction">
-                    <CreditCard size={21} />
-                    <div>
-                      <strong>
-                        {mobileCase.transaction?.descriptor ??
-                          "Tranzacție neidentificată"}
-                      </strong>
-                      <small>
-                        {mobileCase.reference} ·{" "}
-                        {mobileCase.transaction?.status ?? "UNKNOWN"}
-                      </small>
-                    </div>
-                    <b>
-                      {mobileCase.transaction
-                        ? money(mobileCase.transaction.amount_minor)
-                        : "—"}
-                    </b>
-                  </div>
-                )}
-                {mobileRequest ? (
-                  <>
-                    <div className="mobile-request-meta">
-                      <ShieldCheck size={14} />
-                      Solicitare aprobată · {
-                        mobileRequest.questions.length
-                      }{" "}
-                      întrebări
-                    </div>
-                    {mobileRequest.questions.map((q, i) => (
-                      <div className="mobile-question" key={q.id}>
-                        <label>
-                          {i + 1}. {q.text}
-                        </label>
-                        {q.answer_type === "TEXT" ? (
-                          <input
-                            className="pi-answer-text"
-                            aria-label={q.text}
-                            value={answers[q.key] ?? ""}
-                            onChange={(e) =>
-                              setAnswers((a) => ({
-                                ...a,
-                                [q.key]: e.target.value,
-                              }))
-                            }
-                            maxLength={1200}
-                          />
-                        ) : (
-                          <div className="pi-answer-options">
-                            {q.options?.map((option) => (
-                              <button
-                                key={option.value}
-                                className={
-                                  answers[q.key] === option.value
-                                    ? "chosen"
-                                    : ""
-                                }
-                                onClick={() =>
-                                  setAnswers((a) => ({
-                                    ...a,
-                                    [q.key]: option.value,
-                                  }))
-                                }
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    <label className="pi-attachment">
-                      <FileText size={13} />
-                      {attachment
-                        ? attachment.name
-                        : "Atașează o notă sintetică TXT (opțional)"}
-                      <input
-                        type="file"
-                        accept=".txt,text/plain"
-                        aria-label="Atașament sintetic incident"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (file.size > 10000) {
-                              setError("Atașamentul depășește 10 KB.");
-                              return;
-                            }
-                            setAttachment({
-                              name: file.name,
-                              content: await file.text(),
-                            });
-                          }
-                        }}
-                      />
-                    </label>
+              {mobileChannel === "incidents" && (
+                <div className="pi-mobile-cases">
+                  {mobileCases.map((c) => (
                     <button
-                      className="button primary full"
-                      disabled={
-                        busy ||
-                        !mobileRequest.questions.every((q) =>
-                          answers[q.key]?.trim(),
-                        )
-                      }
-                      onClick={() =>
-                        act(async () => {
-                          await api(
-                            `customer-requests/${mobileRequest.id}/responses`,
-                            {
-                              expected_case_version: mobileCase.version,
-                              answers,
-                              attachment,
-                            },
-                          );
-                          setMobileCases(
-                            await api<MobileCase[]>("incident-customer"),
-                          );
-                          setAnswers({});
-                          setAttachment(undefined);
-                        }, "Răspunsurile au fost salvate și reinvestigația a fost programată.")
-                      }
+                      key={c.id}
+                      className={c.id === mobileCase?.id ? "active" : ""}
+                      onClick={() => {
+                        setMobileSelected(c.id);
+                        setAnswers({});
+                        setAttachment(undefined);
+                      }}
                     >
-                      <Send size={14} />
-                      {busy ? "Se salvează…" : "Trimite răspunsurile"}
+                      <span>
+                        <strong>{c.reference}</strong>
+                        <small>
+                          {c.transaction?.descriptor ??
+                            "Tranzacție de clarificat"}
+                        </small>
+                      </span>
+                      <span className="counter">
+                        {
+                          c.requests.filter((r) => r.status === "PENDING")
+                            .length
+                        }
+                      </span>
+                      <ChevronRight size={14} />
                     </button>
-                    <p className="mobile-fine">
-                      Răspunsurile sunt declarații ale clientului, nu dovezi
-                      tehnice.
-                    </p>
-                  </>
-                ) : mobileAnswered ? (
-                  <div className="mobile-success">
-                    <span>
-                      <CheckCircle2 size={30} />
+                  ))}
+                </div>
+              )}
+            </aside>
+            {mobileChannel === "workflows" ? (
+              <OperationsMobile customerId={mobileCustomer} />
+            ) : (
+              <div className="phone pi-phone">
+                <div className="phone-top">
+                  <span>9:41</span>
+                  <span>● ▰ ▰</span>
+                </div>
+                <div className="phone-island" />
+                <div className="phone-content">
+                  <div className="mobile-brand">
+                    <span className="brand-symbol small">
+                      <Network size={16} />
                     </span>
-                    <h3>Răspunsurile tale au fost salvate.</h3>
-                    <p>Investigația continuă pe baza informațiilor noi.</p>
-                    <Status state={mobileCase.status} />
+                    Payment Assist<span>DEMO</span>
                   </div>
-                ) : (
-                  <div className="pi-mobile-empty">
-                    <MessageSquare size={27} />
-                    <h3>Nicio solicitare nouă.</h3>
-                    <p>Întrebările apar aici după aprobarea unui angajat.</p>
+                  <div className="mobile-greeting">
+                    Bună, {mobileCase?.customer_name.split(" ")[0] ?? "client"}.
                   </div>
-                )}
-                {mobileUpdates.map((u) => (
-                  <div className="pi-mobile-update" key={u.id}>
-                    <ShieldCheck size={15} />
-                    <p>{u.message}</p>
-                  </div>
-                ))}
+                  <h2>
+                    Hai să clarificăm
+                    <br />
+                    incidentul tău.
+                  </h2>
+                  {mobileCase && (
+                    <div className="pi-mobile-transaction">
+                      <CreditCard size={21} />
+                      <div>
+                        <strong>
+                          {mobileCase.transaction?.descriptor ??
+                            "Tranzacție neidentificată"}
+                        </strong>
+                        <small>
+                          {mobileCase.reference} ·{" "}
+                          {mobileCase.transaction?.status ?? "UNKNOWN"}
+                        </small>
+                      </div>
+                      <b>
+                        {mobileCase.transaction
+                          ? money(mobileCase.transaction.amount_minor)
+                          : "—"}
+                      </b>
+                    </div>
+                  )}
+                  {mobileRequest ? (
+                    <>
+                      <div className="mobile-request-meta">
+                        <ShieldCheck size={14} />
+                        Solicitare aprobată · {
+                          mobileRequest.questions.length
+                        }{" "}
+                        întrebări
+                      </div>
+                      {mobileRequest.questions.map((q, i) => (
+                        <div className="mobile-question" key={q.id}>
+                          <label>
+                            {i + 1}. {q.text}
+                          </label>
+                          {q.answer_type === "TEXT" ? (
+                            <input
+                              className="pi-answer-text"
+                              aria-label={q.text}
+                              value={answers[q.key] ?? ""}
+                              onChange={(e) =>
+                                setAnswers((a) => ({
+                                  ...a,
+                                  [q.key]: e.target.value,
+                                }))
+                              }
+                              maxLength={1200}
+                            />
+                          ) : (
+                            <div className="pi-answer-options">
+                              {q.options?.map((option) => (
+                                <button
+                                  key={option.value}
+                                  className={
+                                    answers[q.key] === option.value
+                                      ? "chosen"
+                                      : ""
+                                  }
+                                  onClick={() =>
+                                    setAnswers((a) => ({
+                                      ...a,
+                                      [q.key]: option.value,
+                                    }))
+                                  }
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <label className="pi-attachment">
+                        <FileText size={13} />
+                        {attachment
+                          ? attachment.name
+                          : "Atașează o notă sintetică TXT (opțional)"}
+                        <input
+                          type="file"
+                          accept=".txt,text/plain"
+                          aria-label="Atașament sintetic incident"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 10000) {
+                                setError("Atașamentul depășește 10 KB.");
+                                return;
+                              }
+                              setAttachment({
+                                name: file.name,
+                                content: await file.text(),
+                              });
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        className="button primary full"
+                        disabled={
+                          busy ||
+                          !mobileRequest.questions.every((q) =>
+                            answers[q.key]?.trim(),
+                          )
+                        }
+                        onClick={() =>
+                          act(async () => {
+                            await api(
+                              `customer-requests/${mobileRequest.id}/responses`,
+                              {
+                                expected_case_version: mobileCase.version,
+                                answers,
+                                attachment,
+                              },
+                            );
+                            setMobileCases(
+                              await api<MobileCase[]>("incident-customer"),
+                            );
+                            setAnswers({});
+                            setAttachment(undefined);
+                          }, "Răspunsurile au fost salvate și reinvestigația a fost programată.")
+                        }
+                      >
+                        <Send size={14} />
+                        {busy ? "Se salvează…" : "Trimite răspunsurile"}
+                      </button>
+                      <p className="mobile-fine">
+                        Răspunsurile sunt declarații ale clientului, nu dovezi
+                        tehnice.
+                      </p>
+                    </>
+                  ) : mobileAnswered ? (
+                    <div className="mobile-success">
+                      <span>
+                        <CheckCircle2 size={30} />
+                      </span>
+                      <h3>Răspunsurile tale au fost salvate.</h3>
+                      <p>Investigația continuă pe baza informațiilor noi.</p>
+                      <Status state={mobileCase.status} />
+                    </div>
+                  ) : (
+                    <div className="pi-mobile-empty">
+                      <MessageSquare size={27} />
+                      <h3>Nicio solicitare nouă.</h3>
+                      <p>Întrebările apar aici după aprobarea unui angajat.</p>
+                    </div>
+                  )}
+                  {mobileUpdates.map((u) => (
+                    <div className="pi-mobile-update" key={u.id}>
+                      <ShieldCheck size={15} />
+                      <p>{u.message}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="phone-bottom" />
               </div>
-              <div className="phone-bottom" />
-            </div>
+            )}
           </div>
         </>
       ) : isNew ? (

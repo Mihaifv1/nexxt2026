@@ -1,5 +1,9 @@
 # Verificare — 28 octombrie 2026
 
+## Extensie NEXT B2C — verificare restrânsă
+
+La cererea utilizatorului, verificarea extensiei se limitează la TypeScript, build și un parcurs esențial (`scripts/demo-walkthrough.mjs`). Parcursul a trecut pentru onboarding cu document solicitat clientului, contract aprobat și semnat mock, produs în Customer 360, clarificarea venitului contradictoriu, refuz de semnare credit fără activare și livrarea reclamației după aprobare. PDF valid și layout mobil fără overflow; fără erori JavaScript în parcursul executat. P1/P2 nu au fost testate exhaustiv individual. Rezultatele de mai jos sunt ale versiunii anterioare, Payment Incident Intelligence.
+
 DisputePilot, OneFront Door, Smart Branch Handoff și Payment Incident Intelligence.
 
 ## Rezultate executate

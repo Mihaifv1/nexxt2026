@@ -84,3 +84,16 @@ export const incidentRulebooks = sqliteTable("b2c_rulebook_versions", {
   id: text("id").primaryKey(),
   data: text("data").notNull(),
 });
+export const workflowCases = sqliteTable("b2c_workflow_cases", {
+  id: text("id").primaryKey(),
+  owner_id: text("owner_id").notNull(),
+  version: integer("version").notNull(),
+  data: text("data").notNull(),
+  last_mutation: text("last_mutation").notNull(),
+});
+export const operationRecords = sqliteTable("b2c_operation_records", {
+  id: text("id").primaryKey(),
+  owner_id: text("owner_id").notNull(),
+  customer_id: text("customer_id").notNull(),
+  data: text("data").notNull(),
+});

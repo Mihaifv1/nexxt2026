@@ -1,4 +1,6 @@
-# DisputePilot RO
+# NEXT B2C Operations Hub
+
+Intrarea principală este `/b2c/dashboard`: **Customer 360**, cazuri comune, catalogul celor **29 de fluxuri**, documente versionate, ofertare ilustrativă, semnare mock, aprobări și audit. Vezi [OPERATIONS_HUB.md](OPERATIONS_HUB.md) pentru fluxuri, setup și limitele prototipului.
 
 Aplicația include acum **Payment Incident Intelligence**: un orchestrator comun pentru DisputePilot, ScamRescue, RoPay Rescue și ATMTrace, cu Human Review, aprobări, simulator comun, coadă persistentă și 16 scenarii. Intrarea principală este `/b2c/incidents`. Vezi [PAYMENT_INCIDENTS.md](PAYMENT_INCIDENTS.md).
 
@@ -17,6 +19,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_audit_immutable.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_productive_speed_demon.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_stale_midnight.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_light_ultragirl.sql
 npm run dev -- --hostname 127.0.0.1
 ```
 

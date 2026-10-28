@@ -13,7 +13,18 @@ export class SqliteD1 {
         "utf8",
       ),
     );
-    this.db.exec(readFileSync(new URL('../drizzle/0003_stale_midnight.sql',import.meta.url),'utf8'));
+    this.db.exec(
+      readFileSync(
+        new URL("../drizzle/0003_stale_midnight.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    this.db.exec(
+      readFileSync(
+        new URL("../drizzle/0004_light_ultragirl.sql", import.meta.url),
+        "utf8",
+      ),
+    );
   }
   prepare(sql: string) {
     return new Statement(this, sql);

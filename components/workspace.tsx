@@ -1,6 +1,7 @@
 "use client";
 import CustomerHub from "./customer-hub";
 import IncidentCenter from "./incident-center";
+import OperationsHub from "./operations-hub";
 import {
   useCallback,
   useEffect,
@@ -181,9 +182,25 @@ type CustomerCase = Pick<
   | "requests"
 >;
 export default function Workspace() {
-  const [path, setPath] = useState("/b2c/incidents");
-  const isPayment =
+  const [path, setPath] = useState("/b2c/dashboard");
+  const isOperations =
     path === "/b2c" ||
+    [
+      "/b2c/dashboard",
+      "/b2c/workflows",
+      "/b2c/approvals",
+      "/b2c/operations-analytics",
+      "/b2c/operations-audit",
+    ].includes(path) ||
+    [
+      "/b2c/clients",
+      "/b2c/cases",
+      "/b2c/onboarding",
+      "/b2c/contracts",
+      "/b2c/credits",
+      "/b2c/complaints",
+    ].some((p) => path === p || path.startsWith(p + "/"));
+  const isPayment =
     path.startsWith("/b2c/incidents") ||
     [
       "/b2c/customer-demo",
@@ -251,7 +268,7 @@ export default function Workspace() {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    setPath(location.pathname === "/" ? "/b2c/incidents" : location.pathname);
+    setPath(location.pathname === "/" ? "/b2c/dashboard" : location.pathname);
     const initialCustomer = new URLSearchParams(location.search).get(
       "customer",
     );
@@ -292,6 +309,7 @@ export default function Workspace() {
       loading ||
       !authenticated ||
       isPayment ||
+      isOperations ||
       path.includes("/intake") ||
       path.includes("/branch")
     )
@@ -300,7 +318,7 @@ export default function Workspace() {
       refresh().catch(() => {});
     }, 1600);
     return () => clearInterval(t);
-  }, [loading, authenticated, refresh, isPayment, path]);
+  }, [loading, authenticated, refresh, isPayment, isOperations, path]);
   const isCustomer = path.includes("/demo/customer");
   useEffect(() => {
     if (!isCustomer || !customerId) return;
@@ -353,8 +371,8 @@ export default function Workspace() {
   const selectedId = path.match(/\/disputes\/([^/]+)/)?.[1];
   const selected = cases.find((c) => c.id === selectedId);
   const run = selected?.investigations.at(-1);
-  const isAnalytics = path.includes("/analytics");
-  const isAudit = path.includes("/audit");
+  const isAnalytics = path.includes("analytics");
+  const isAudit = path.includes("audit");
   const act = async (fn: () => Promise<unknown>, message: string) => {
     setBusy(true);
     setError("");
@@ -448,21 +466,25 @@ export default function Workspace() {
             a.id.localeCompare(b.id),
     );
   const isHub = path.includes("/intake") || path.includes("/branch");
-  const title = isPayment
-    ? "Payment Incident Intelligence"
-    : isHub
-      ? path.includes("/branch")
-        ? "Smart Branch Handoff"
-        : "OneFront Door"
-      : isCustomer
-        ? "Simulator client"
-        : isAnalytics
-          ? "Analiză operațională"
-          : isAudit
-            ? "Jurnal de audit"
-            : selected
-              ? "Investigație caz"
-              : "Cazuri de dispută";
+  const title = isOperations
+    ? "NEXT B2C Operations Hub"
+    : isPayment
+      ? path === "/b2c/customer-demo"
+        ? "Customer Mobile Simulator"
+        : "Payment Incident Intelligence"
+      : isHub
+        ? path.includes("/branch")
+          ? "Smart Branch Handoff"
+          : "OneFront Door"
+        : isCustomer
+          ? "Simulator client"
+          : isAnalytics
+            ? "Analiză operațională"
+            : isAudit
+              ? "Jurnal de audit"
+              : selected
+                ? "Investigație caz"
+                : "Cazuri de dispută";
   const customerCase = customerCases[0];
   const request = customerCase?.requests
     .filter((r) => r.status === "PENDING")
@@ -480,17 +502,17 @@ export default function Workspace() {
       <aside className="sidebar">
         <a
           className="brand"
-          href="/b2c/incidents"
+          href="/b2c/dashboard"
           onClick={(e) => {
             e.preventDefault();
-            navigate("/b2c/incidents");
+            navigate("/b2c/dashboard");
           }}
         >
           <span className="brand-symbol">
             <Workflow size={23} />
           </span>
           <span>
-            Payment Ops<span className="brand-country">RO</span>
+            NEXT<span className="brand-country">B2C</span>
           </span>
         </a>
         <div className="workspace-label">
@@ -498,6 +520,53 @@ export default function Workspace() {
         </div>
         <div className="sidebar-section-label">SPAȚIUL TĂU DE LUCRU</div>
         <nav>
+          <button
+            className={
+              path === "/b2c/dashboard" || path === "/b2c"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() => navigate("/b2c/dashboard")}
+          >
+            <LayoutDashboard size={18} />
+            Operations Hub
+          </button>
+          <button
+            className={
+              path.startsWith("/b2c/clients") ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/clients")}
+          >
+            <UserRound size={18} />
+            Customer 360
+          </button>
+          <button
+            className={
+              path.startsWith("/b2c/cases") ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/cases")}
+          >
+            <FolderOpen size={18} />
+            Cazuri & workflow-uri
+          </button>
+          <button
+            className={
+              path === "/b2c/workflows" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/workflows")}
+          >
+            <Workflow size={18} />
+            Catalog · 29 fluxuri
+          </button>
+          <button
+            className={
+              path === "/b2c/approvals" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/approvals")}
+          >
+            <ShieldCheck size={18} />
+            Aprobări comune
+          </button>
           <button
             className={
               isPayment &&
@@ -515,7 +584,12 @@ export default function Workspace() {
           </button>
           <button
             className={
-              !isPayment && !isCustomer && !isAnalytics && !isAudit && !isHub
+              !isOperations &&
+              !isPayment &&
+              !isCustomer &&
+              !isAnalytics &&
+              !isAudit &&
+              !isHub
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -526,7 +600,7 @@ export default function Workspace() {
           </button>
           <button
             className={isAnalytics ? "nav-item active" : "nav-item"}
-            onClick={() => navigate("/b2c/analytics")}
+            onClick={() => navigate("/b2c/operations-analytics")}
           >
             <LayoutDashboard size={18} />
             Analiză operațională
@@ -551,7 +625,7 @@ export default function Workspace() {
           </button>
           <button
             className={isAudit ? "nav-item active" : "nav-item"}
-            onClick={() => navigate("/b2c/audit")}
+            onClick={() => navigate("/b2c/operations-audit")}
           >
             <FileText size={18} />
             Jurnal de audit
@@ -700,6 +774,13 @@ export default function Workspace() {
             >
               Se încarcă datele sintetice și sesiunea demo.
             </Empty>
+          ) : isOperations ? (
+            <OperationsHub
+              key={path}
+              path={path}
+              role={role}
+              onNavigate={navigate}
+            />
           ) : isPayment ? (
             <IncidentCenter
               key={path}
@@ -2099,7 +2180,7 @@ export default function Workspace() {
         </main>
         <footer className="app-footer">
           <span>
-            DisputePilot RO <span>·</span> VibeHack 2026
+            NEXT B2C <span>·</span> VibeHack 2026
           </span>
           <span>
             <ShieldCheck size={12} />

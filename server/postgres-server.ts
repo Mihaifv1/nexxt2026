@@ -9,6 +9,12 @@ const db = new PostgresDatabase(process.env.DATABASE_URL);
 if (process.argv.includes("--migrate")) {
   await db.pool.query(
     await readFile(
+      new URL("../db/postgres/004_operations_hub.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  await db.pool.query(
+    await readFile(
       new URL("../db/postgres/001_initial.sql", import.meta.url),
       "utf8",
     ),

@@ -112,6 +112,7 @@ export interface Appointment {
   note?: string;
 }
 export interface CustomerProfile {
+  operations?: import("../operations/domain").CustomerOperations;
   id: string;
   name: string;
   linked_case_id: string;

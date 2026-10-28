@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./frontdoor.css";
 import "./incidents.css";
+import "./operations.css";
 
 export const metadata: Metadata = {
-  title: "Payment Incident Intelligence · B2C",
+  title: "NEXT · B2C Operations Hub",
   description:
-    "Patru investigatori, un orchestrator comun și decizie umană. Incidente de plată investigate cu dovezi sintetice.",
+    "Customer 360, workflow-uri, documente, contracte și investigații într-un hub B2C demonstrativ cu decizie umană.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
