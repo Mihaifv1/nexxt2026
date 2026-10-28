@@ -1,4 +1,5 @@
 "use client";
+import CustomerHub from "./customer-hub";
 import {
   useCallback,
   useEffect,
@@ -8,6 +9,8 @@ import {
 } from "react";
 import {
   Activity,
+  CalendarDays,
+  UserRound,
   ArrowDown,
   ArrowDownLeft,
   ArrowLeft,
@@ -355,17 +358,20 @@ export default function Workspace() {
   };
   const investigate = (recover = false) =>
     selected &&
-    act(
-      async () => {
-        const result = await post<{status:string}>(`disputes/${selected.id}/investigations`, {
+    act(async () => {
+      const result = await post<{ status: string }>(
+        `disputes/${selected.id}/investigations`,
+        {
           expected_case_version: selected.version,
           ...(recover ? { recover_demo_fault: true } : {}),
-        });
-        if(result.status === 'FAILED') throw new Error('Investigația a fost oprită controlat. Consultă eroarea din dosar.');
-        return result;
-      },
-      "Investigația s-a finalizat. Rezultatul este disponibil.",
-    );
+        },
+      );
+      if (result.status === "FAILED")
+        throw new Error(
+          "Investigația a fost oprită controlat. Consultă eroarea din dosar.",
+        );
+      return result;
+    }, "Investigația s-a finalizat. Rezultatul este disponibil.");
   const approve = (action: string) =>
     selected &&
     run &&
@@ -428,15 +434,20 @@ export default function Workspace() {
               { URGENT: 0, HIGH: 1, NORMAL: 2 }[b.priority] ||
             a.id.localeCompare(b.id),
     );
-  const title = isCustomer
-    ? "Simulator client"
-    : isAnalytics
-      ? "Analiză operațională"
-      : isAudit
-        ? "Jurnal de audit"
-        : selected
-          ? "Investigație caz"
-          : "Cazuri de dispută";
+  const isHub = path.includes("/intake") || path.includes("/branch");
+  const title = isHub
+    ? path.includes("/branch")
+      ? "Smart Branch Handoff"
+      : "OneFront Door"
+    : isCustomer
+      ? "Simulator client"
+      : isAnalytics
+        ? "Analiză operațională"
+        : isAudit
+          ? "Jurnal de audit"
+          : selected
+            ? "Investigație caz"
+            : "Cazuri de dispută";
   const customerCase = customerCases[0];
   const request = customerCase?.requests
     .filter((r) => r.status === "PENDING")
@@ -474,7 +485,7 @@ export default function Workspace() {
         <nav>
           <button
             className={
-              !isCustomer && !isAnalytics && !isAudit
+              !isCustomer && !isAnalytics && !isAudit && !isHub
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -489,6 +500,24 @@ export default function Workspace() {
           >
             <LayoutDashboard size={18} />
             Analiză operațională
+          </button>
+          <button
+            className={
+              path.includes("/intake") ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/intake")}
+          >
+            <UserRound size={18} />
+            OneFront Door
+          </button>
+          <button
+            className={
+              path.includes("/branch") ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/branch")}
+          >
+            <CalendarDays size={18} />
+            Branch Handoff
           </button>
           <button
             className={isAudit ? "nav-item active" : "nav-item"}
@@ -531,7 +560,7 @@ export default function Workspace() {
               <select
                 aria-label="Rol demo"
                 value={role}
-                disabled={busy}
+                disabled={busy || loading}
                 onChange={(e) => {
                   const next = e.target.value as Role;
                   act(async () => {
@@ -561,7 +590,7 @@ export default function Workspace() {
               className="mobile-role"
               aria-label="Rol demo mobil"
               value={role}
-              disabled={busy}
+              disabled={busy || loading}
               onChange={(e) => {
                 const next = e.target.value as Role;
                 act(async () => {
@@ -606,7 +635,9 @@ export default function Workspace() {
               <p>Autentifică-te pentru a accesa demo-ul privat DisputePilot.</p>
               <a
                 className="button primary"
-                href="/signin-with-chatgpt?return_to=/b2c/disputes"
+                href={
+                  "/signin-with-chatgpt?return_to=" + encodeURIComponent(path)
+                }
                 target="_top"
               >
                 <LogIn size={16} />
@@ -620,6 +651,13 @@ export default function Workspace() {
             >
               Se încarcă datele sintetice și sesiunea demo.
             </Empty>
+          ) : isHub ? (
+            <CustomerHub
+              key={path}
+              view={path.includes("/branch") ? "branch" : "intake"}
+              role={role}
+              onNavigate={navigate}
+            />
           ) : isCustomer ? (
             <>
               <div className="page-heading">
@@ -992,6 +1030,15 @@ export default function Workspace() {
                     <span>·</span>Card •••• {selected.card_last4}
                     <span>·</span>
                     <Badge status={selected.status} />
+                    <button
+                      className="text-button"
+                      onClick={() =>
+                        navigate("/b2c/intake?customer=" + selected.customer_id)
+                      }
+                    >
+                      Profil unic
+                      <ArrowUpRight size={11} />
+                    </button>
                   </div>
                 </div>
                 <div className="case-heading-right">

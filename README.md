@@ -1,5 +1,7 @@
 # DisputePilot RO
 
+Aplicația include și **OneFront Door** (profil canonic, intake și documente) și **Smart Branch Handoff** (dosar consilier, programare și check-in). Vezi [FRONTDOOR.md](FRONTDOOR.md) pentru parcursul complet, noua migrare și configurarea cheii de criptare.
+
 Modul B2C pentru investigarea contestațiilor de plată cu cardul. Interfață în română, date sintetice și control uman al comunicării și al traseului operațional. Nu execută rambursări, blocări de card sau chargeback-uri.
 
 ## Pornire rapidă: demo local cu D1

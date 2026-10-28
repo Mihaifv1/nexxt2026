@@ -4,6 +4,9 @@ import { readFile } from "node:fs/promises";
 import { PostgresDatabase } from "../server/postgres.ts";
 import { D1Store } from "../lib/store.ts";
 import { Engine } from "../lib/engine.ts";
+import { ProfileStore } from "../lib/frontdoor/store.ts";
+import { FrontDoorEngine, branchSlots } from "../lib/frontdoor/engine.ts";
+import { sampleStatement } from "../lib/frontdoor/extraction.ts";
 const db = new PostgresDatabase(
   process.env.DATABASE_URL ??
     "postgresql://disputepilot:local-demo-only@127.0.0.1:5432/disputepilot",
@@ -17,6 +20,12 @@ test("PostgreSQL: all primary scenarios, persistence, CAS and immutable audit", 
       ),
     );
     const owner = "integration-" + crypto.randomUUID();
+    await db.pool.query(
+      await readFile(
+        new URL("../db/postgres/002_frontdoor.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     const store = new D1Store(db as unknown as D1Database);
     await store.reset(owner);
     const engine = new Engine(store, owner, {
@@ -89,6 +98,70 @@ test("PostgreSQL: all primary scenarios, persistence, CAS and immutable audit", 
       [owner],
     );
     assert.ok(audit.rows[0].count > 50);
+    const profiles = new ProfileStore(
+      db as unknown as D1Database,
+      "cd".repeat(32),
+    );
+    await profiles.bootstrap(owner, await store.list(owner));
+    const frontdoor = new FrontDoorEngine(profiles, owner, {
+      id: "operator",
+      role: "B2C_AGENT",
+    });
+    let profile = await profiles.get(owner, "CUST-10482");
+    await frontdoor.act(
+      profile.id,
+      {
+        action: "INTAKE",
+        text: sampleStatement,
+        expected_version: profile.version,
+      },
+      "intake",
+    );
+    profile = await profiles.get(owner, profile.id);
+    assert.equal(profile.goal, "CAR");
+    await frontdoor.act(
+      profile.id,
+      {
+        action: "CONFIRM_FIELDS",
+        expected_version: profile.version,
+        proposals: profile.proposals.map((x) => ({ id: x.id })),
+        purposes: ["ELIGIBILITY", "BRANCH_HANDOFF"],
+      },
+      "confirm",
+    );
+    profile = await profiles.get(owner, profile.id);
+    assert.equal(profile.fields.income_minor?.value, 1050000);
+    await frontdoor.act(
+      profile.id,
+      {
+        action: "CONSENT",
+        expected_version: profile.version,
+        field_keys: ["full_name"],
+        purpose: "BRANCH_HANDOFF",
+        granted: true,
+      },
+      "consent",
+    );
+    profile = await profiles.get(owner, profile.id);
+    await frontdoor.act(
+      profile.id,
+      {
+        action: "BOOK_APPOINTMENT",
+        expected_version: profile.version,
+        slot_id: branchSlots()[0].id,
+      },
+      "book",
+    );
+    profile = await profiles.get(owner, profile.id);
+    assert.equal(profile.appointments.length, 1);
+    const raw = await db.pool.query(
+      "SELECT data FROM b2c_customer_profiles WHERE id=$1",
+      [owner + ":" + profile.id],
+    );
+    assert.ok(!raw.rows[0].data.includes("Andreea"));
+    console.log(
+      "PostgreSQL encrypted canonical profile, intake confirmation and appointment passed.",
+    );
     console.log(
       "PostgreSQL persisted",
       audit.rows[0].count,

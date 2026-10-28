@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./frontdoor.css";
 
 export const metadata: Metadata = {
   title: "DisputePilot RO · Investigații carduri",

@@ -15,6 +15,13 @@
       "when": 1793187447768,
       "tag": "0001_audit_immutable",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793188816195,
+      "tag": "0002_productive_speed_demon",
+      "breakpoints": true
     }
   ]
 }

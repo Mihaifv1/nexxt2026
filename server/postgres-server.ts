@@ -13,6 +13,12 @@ if (process.argv.includes("--migrate")) {
     ),
   );
   console.log("Migrarea PostgreSQL a fost aplicată.");
+  await db.pool.query(
+    await readFile(
+      new URL("../db/postgres/002_frontdoor.sql", import.meta.url),
+      "utf8",
+    ),
+  );
 }
 createServer(async (req, res) => {
   try {
@@ -42,6 +48,7 @@ createServer(async (req, res) => {
       LLM_ENDPOINT: process.env.LLM_ENDPOINT,
       LLM_MODEL: process.env.LLM_MODEL,
       LLM_API_KEY: process.env.LLM_API_KEY,
+      PROFILE_ENCRYPTION_KEY: process.env.PROFILE_ENCRYPTION_KEY,
     });
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(await response.text());

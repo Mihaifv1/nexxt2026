@@ -34,6 +34,9 @@ export class D1Store implements Store {
     return JSON.parse(row.data) as DisputeCase;
   }
   async save(owner: string, c: DisputeCase, version: number) {
+    const previous = await this.get(owner,c.id);
+    assert(previous.version===version,'VERSION_CONFLICT','Cazul a fost actualizat. Reîncarcă și repetă acțiunea.',409);
+    const persistedEvents = new Set(previous.audit.map(e=>e.event_id));
     const mutation = uid("MUT");
     c.version = version + 1;
     c.updated_at = now();
@@ -50,7 +53,7 @@ export class D1Store implements Store {
           owner,
           version,
         ),
-      ...c.audit.map((e) =>
+      ...c.audit.filter(e=>!persistedEvents.has(e.event_id)).map((e) =>
         this.db
           .prepare(
             "INSERT OR IGNORE INTO b2c_audit_events (event_id,case_id,owner_id,timestamp,data) SELECT ?,?,?,?,? WHERE EXISTS (SELECT 1 FROM b2c_dispute_cases WHERE id = ? AND last_mutation = ?)",

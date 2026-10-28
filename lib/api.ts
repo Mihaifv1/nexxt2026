@@ -9,8 +9,10 @@ import {
 import { D1Store } from "./store.ts";
 import { Engine, type Actor } from "./engine.ts";
 import type { ProviderConfig } from "./provider.ts";
+import { frontDoorApi } from "./frontdoor/api.ts";
 export interface ApiEnv extends ProviderConfig {
   DB: D1Database;
+  PROFILE_ENCRYPTION_KEY?: string;
 }
 const json = (
   value: unknown,
@@ -158,6 +160,16 @@ export async function handleApi(
       }
     }
     engine.authorize(["B2C_AGENT", "B2C_SUPERVISOR"]);
+    if (path[0] === "frontdoor")
+      return await frontDoorApi(
+        request,
+        env.DB,
+        env.PROFILE_ENCRYPTION_KEY ?? "",
+        owner,
+        actor,
+        env,
+        () => store.list(owner),
+      );
     if (path[0] === "session" && method === "GET")
       return json({
         role: actor.role,

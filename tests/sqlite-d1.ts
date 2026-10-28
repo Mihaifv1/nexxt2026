@@ -1,10 +1,17 @@
 import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
 export class SqliteD1 {
   db: DatabaseSync;
   constructor(path = ":memory:") {
     this.db = new DatabaseSync(path);
     this.db.exec(
       `CREATE TABLE b2c_dispute_cases (id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,version INTEGER NOT NULL,data TEXT NOT NULL,last_mutation TEXT NOT NULL);CREATE TABLE b2c_audit_events (event_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,owner_id TEXT NOT NULL,timestamp TEXT NOT NULL,data TEXT NOT NULL);CREATE TABLE b2c_demo_sessions (id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,role TEXT NOT NULL,customer_id TEXT,expires_at TEXT NOT NULL);`,
+    );
+    this.db.exec(
+      readFileSync(
+        new URL("../drizzle/0002_productive_speed_demon.sql", import.meta.url),
+        "utf8",
+      ),
     );
   }
   prepare(sql: string) {

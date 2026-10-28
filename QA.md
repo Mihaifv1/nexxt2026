@@ -1,24 +1,34 @@
-# Verificare executată — 28 octombrie 2026
+# Verificare — 28 octombrie 2026
+
+DisputePilot, OneFront Door și Smart Branch Handoff.
+
+## Rezultate executate
 
 - TypeScript: `npm run typecheck` — trecut, fără erori.
-- Domeniu și integrare SQL/API: `npm test` — **23/23 trecute**.
-- Playwright în Microsoft Edge: `npm run test:e2e` — **5/5 trecute**, ultima rulare 33,4 secunde.
-- PostgreSQL 17 în Docker: `npm run test:postgres` — **1/1 trecut**, cu scenariile A/B/C, persistență, compare-and-swap concurent și audit append-only. Ultima rulare a persistat 89 de evenimente imutabile pentru proprietarul sintetic de test.
+- `npm test` — **39/39 trecute**: 23 pentru dispute și 16 pentru profil și handoff.
+- `npm run test:e2e` — **9/9 trecute** în Edge: 5 pentru dispute și 4 pentru noile module. Ultima rulare integrală: 1,4 minute.
+- `npm run test:postgres` — **1/1 trecut**, cu dispute, compare-and-swap concurent, audit imutabil, profil criptat, confirmare intake și programare pe PostgreSQL real în Docker.
 
-## Acoperire verificată
+Build-ul și pachetul pentru publicare sunt produse din același commit prin helper-ul Sites.
 
-Plată nerecunoscută → colectare dovezi → întrebări editate → aprobare → refresh fără pierdere de stare → simulator → răspunsuri → reinvestigare → aprobare traseu → închidere de supervizor → audit. Plata duplicată folosește instrumentul dedicat; două autorizări/o singură decontare nu confirmă duplicarea. Dovezile contradictorii escaladează.
+## Acoperire
 
-Testele mai verifică validarea JSON și a referințelor, lipsa trimiterilor înainte de aprobare, idempotency, conflicte de versiune, cereri expirate, răspunsuri incomplete, roluri și izolare între proprietari, prompt injection ca date, LLM indisponibil, timeout de instrument și recuperarea explicită a defecțiunii demo. Resetarea păstrează auditul.
+**Dispute:** plată nerecunoscută, întrebări editate, aprobare, refresh, răspunsuri client, reinvestigare, traseu aprobat, închidere demo și audit. Sunt acoperite și decontările distincte, autorizările fără două decontări, contradicții, roluri, idempotency, versiuni expirate, răspunsuri incomplete, LLM indisponibil, JSON invalid, prompt injection și timeout de instrument.
 
-Interfața a fost verificată la 1440×1000 și 390×844. Capturi în `outputs/`: inbox desktop/mobil, investigație desktop și simulator mobil. Rapoartele Playwright și capturile sunt fișiere locale ignorate de Git.
+**OneFront Door:** mesaj în română, extracție fără date inventate, confirmare umană, consimțământ separat, trei tipuri de documente, profil unic cu proveniență și reguli deterministe. Documentele expirate sau aparținând altui profil sunt respinse. Un upload TXT real este verificat în browser. Contradicțiile cer alegerea sursei corecte. Identity și Financial Health primesc proiecții diferite ale profilului.
 
-## Probleme corectate în verificare
+**Branch Handoff:** dosar din câmpuri permise, programare, cod greșit respins, check-in valid, rezultat decis de angajat și persistență după refresh. Revocarea acordului elimină venitul din dosar și marchează dosarul pentru actualizare. Continuarea cu o cerere demo este blocată dacă dosarul este neactual. O contestație nu cere venituri și nu pornește un agent de credit.
 
-Selectors E2E au fost făcuți exacți pentru rolul desktop/mobil și compatibili cu auditul istoric păstrat după resetare. Preview-ul a fost repornit după invalidarea grafului CSS în timpul reformătării; a fost confirmată încărcarea foii de stil înainte de rerulare. Fișierele de rapoarte sunt excluse din watch pentru a evita reîncărcarea paginilor în timpul testelor. Erorile investigației afișează stare și notificare de eroare, fără toast fals de succes. Solicitarea de revizuire creează efectiv o rundă nouă, iar rezultatul final al investigației este păstrat pentru replay idempotent.
+**Protecții:** AES-256-GCM, date autentificate pe proprietar, ciphertext fără nume lizibil, conflicte de versiune, unicitatea rezervărilor, retragerea câmpurilor dependente de documente respinse și resetare cu audit păstrat. Scrierile de audit adaugă numai evenimentele noi.
+
+## Verificare vizuală
+
+Rezoluții 1440×1000 și 390×844: inbox, investigație, simulator, OneFront Door și Branch Handoff. Nu există overflow al paginii în testele mobile. Capturile și raportul Playwright sunt în `outputs/`, ignorat de Git.
+
+Corecții în QA: selectorul de rol a fost dezactivat până la încărcarea sesiunii; testele așteaptă salvarea acordurilor pe server; auditul acceptă istoricul păstrat după resetare; erorile nu afișează succes fals; dosarele neactuale sunt blocate pentru continuare.
 
 ## Limite
 
-Nu a fost configurat sau apelat un serviciu LLM real; providerul live este implementat și erorile sale sunt testate cu răspunsuri simulate. Modul implicit este etichetat explicit „Motor demo determinist”. Găzduirea Sites utilizează D1, iar PostgreSQL este verificat separat pentru rulare locală/backend Node. Modelul de persistență folosește agregate JSON versionate și audit separat, conform explicației din README. Rolurile sunt intenționat selectabile de proprietar în acest demo; nu sunt IAM de producție.
+Date exclusiv sintetice. Parser TXT pentru documente; OCR PDF/imagini, KYC extern, CRM, EUDI Wallet și calendare bancare reale nu sunt conectate. LLM-ul live este configurabil și nu a fost apelat în aceste teste. Implicit se folosește motorul determinist. Rolurile și acțiunile clientului/consilierului sunt simulate pentru operator; IAM de producție trebuie integrat cu aplicația gazdă.
 
-Instrucțiunile complete de pornire, variabilele server și pașii demo sunt în README.md.
+Instrucțiuni: README.md și FRONTDOOR.md.

@@ -20,3 +20,16 @@ export const sessions = sqliteTable("b2c_demo_sessions", {
   customer_id: text("customer_id"),
   expires_at: text("expires_at").notNull(),
 });
+export const profiles = sqliteTable("b2c_customer_profiles", {
+  id: text("id").primaryKey(),
+  owner_id: text("owner_id").notNull(),
+  version: integer("version").notNull(),
+  data: text("data").notNull(),
+  last_mutation: text("last_mutation").notNull(),
+});
+export const bookings = sqliteTable("b2c_branch_bookings", {
+  id: text("id").primaryKey(),
+  owner_id: text("owner_id").notNull(),
+  customer_id: text("customer_id").notNull(),
+  slot_id: text("slot_id").notNull(),
+});
