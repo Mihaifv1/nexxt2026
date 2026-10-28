@@ -1,15 +1,17 @@
 # Verificare — 28 octombrie 2026
 
-DisputePilot, OneFront Door și Smart Branch Handoff.
+DisputePilot, OneFront Door, Smart Branch Handoff și Payment Incident Intelligence.
 
 ## Rezultate executate
 
 - TypeScript: `npm run typecheck` — trecut, fără erori.
-- `npm test` — **39/39 trecute**: 23 pentru dispute și 16 pentru profil și handoff.
-- `npm run test:e2e` — **9/9 trecute** în Edge: 5 pentru dispute și 4 pentru noile module. Ultima rulare integrală: 1,4 minute.
+- `npm test` — **72/72 trecute**: dispute, profil/handoff și 33 verificări pentru noul orchestrator.
+- Playwright — **15 fluxuri verificate** în Edge: 5 dispute, 4 profil/handoff și 6 incidente. Formularul nou și un flux de acorduri au fost reverificate separat după corecția selectorului accesibil, respectiv ajustarea așteptării salvării.
 - `npm run test:postgres` — **1/1 trecut**, cu dispute, compare-and-swap concurent, audit imutabil, profil criptat, confirmare intake și programare pe PostgreSQL real în Docker.
 
 Build-ul și pachetul pentru publicare sunt produse din același commit prin helper-ul Sites.
+
+Orchestrator: 16 rute/scenarii, reclasificare RoPay → ScamRescue, escaladare numai după aprobare, ATM/reversare, dosare aprobate, client izolat, idempotency, bootstrap concurent, recuperare lease, limitarea reîncercărilor, reset cu păstrarea cazurilor manuale și eșec LLM/JSON/dovezi fabricate. PostgreSQL verifică și noile proiecții și joburi. LLM live neconfigurat: modul demonstrat este determinist.
 
 ## Acoperire
 

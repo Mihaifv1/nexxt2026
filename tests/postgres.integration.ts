@@ -7,6 +7,11 @@ import { Engine } from "../lib/engine.ts";
 import { ProfileStore } from "../lib/frontdoor/store.ts";
 import { FrontDoorEngine, branchSlots } from "../lib/frontdoor/engine.ts";
 import { sampleStatement } from "../lib/frontdoor/extraction.ts";
+import { IncidentStore } from "../lib/incidents/store.ts";
+import {
+  IncidentService,
+  InvestigationOrchestrator,
+} from "../lib/incidents/orchestrator.ts";
 const db = new PostgresDatabase(
   process.env.DATABASE_URL ??
     "postgresql://disputepilot:local-demo-only@127.0.0.1:5432/disputepilot",
@@ -27,6 +32,53 @@ test("PostgreSQL: all primary scenarios, persistence, CAS and immutable audit", 
       ),
     );
     const store = new D1Store(db as unknown as D1Database);
+    await db.pool.query(
+      await readFile(
+        new URL("../db/postgres/003_payment_incidents.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    const incidents = new IncidentStore(db as unknown as D1Database);
+    await incidents.seed(owner);
+    const service = new IncidentService(incidents, owner, {
+      id: "employee",
+      role: "B2C_SUPERVISOR",
+    });
+    const worker = new InvestigationOrchestrator(incidents);
+    for (const [code, route] of [
+      ["D01", "DISPUTE_PILOT"],
+      ["S02", "SCAM_RESCUE"],
+      ["R03", "ROPAY_RESCUE"],
+      ["A02", "ATM_TRACE"],
+      ["H01", "HUMAN_REVIEW"],
+    ]) {
+      let incident = (await incidents.list(owner)).find(
+        (c) => c.fixture_code === code,
+      )!;
+      const queued = await service.enqueue(
+        incident.id,
+        { expected_case_version: incident.version },
+        "pg-" + code,
+      );
+      await worker.execute(owner, queued.job_id);
+      incident = await incidents.get(owner, incident.id);
+      assert.equal(incident.primary_route, route);
+      assert.equal(
+        incident.runs[0].status,
+        "COMPLETED",
+        incident.runs[0].error,
+      );
+      assert.equal(
+        (await incidents.getJob(owner, queued.job_id)).status,
+        "COMPLETED",
+      );
+      assert.ok(incident.evidence.length >= 2);
+    }
+    const normalized = await db.pool.query(
+      "SELECT count(*)::int as n FROM b2c_tool_calls WHERE owner_id=$1",
+      [owner],
+    );
+    assert.ok(normalized.rows[0].n > 15);
     await store.reset(owner);
     const engine = new Engine(store, owner, {
       id: "employee",

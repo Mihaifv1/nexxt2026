@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./frontdoor.css";
+import "./incidents.css";
 
 export const metadata: Metadata = {
-  title: "DisputePilot RO · Investigații carduri",
+  title: "Payment Incident Intelligence · B2C",
   description:
-    "AI-ul investighează. Regulile validează. Angajatul decide. Spațiu demonstrativ cu date sintetice.",
+    "Patru investigatori, un orchestrator comun și decizie umană. Incidente de plată investigate cu dovezi sintetice.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

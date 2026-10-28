@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { handleApi } from "../lib/api.ts";
 import { PostgresDatabase } from "./postgres.ts";
+import { withRequestTasks } from "../lib/request-tasks.ts";
 if (!process.env.DATABASE_URL)
   throw new Error("Configurează DATABASE_URL pentru PostgreSQL.");
 const db = new PostgresDatabase(process.env.DATABASE_URL);
@@ -13,6 +14,12 @@ if (process.argv.includes("--migrate")) {
     ),
   );
   console.log("Migrarea PostgreSQL a fost aplicată.");
+  await db.pool.query(
+    await readFile(
+      new URL("../db/postgres/003_payment_incidents.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   await db.pool.query(
     await readFile(
       new URL("../db/postgres/002_frontdoor.sql", import.meta.url),
@@ -43,13 +50,26 @@ createServer(async (req, res) => {
       headers,
       ...(body ? { body } : {}),
     });
-    const response = await handleApi(request, {
-      DB: db as unknown as D1Database,
-      LLM_ENDPOINT: process.env.LLM_ENDPOINT,
-      LLM_MODEL: process.env.LLM_MODEL,
-      LLM_API_KEY: process.env.LLM_API_KEY,
-      PROFILE_ENCRYPTION_KEY: process.env.PROFILE_ENCRYPTION_KEY,
-    });
+    const response = await withRequestTasks(
+      {
+        waitUntil(task) {
+          task.catch((error) =>
+            console.error(
+              "Investigation task failed",
+              error instanceof Error ? error.message : "error",
+            ),
+          );
+        },
+      },
+      () =>
+        handleApi(request, {
+          DB: db as unknown as D1Database,
+          LLM_ENDPOINT: process.env.LLM_ENDPOINT,
+          LLM_MODEL: process.env.LLM_MODEL,
+          LLM_API_KEY: process.env.LLM_API_KEY,
+          PROFILE_ENCRYPTION_KEY: process.env.PROFILE_ENCRYPTION_KEY,
+        }),
+    );
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(await response.text());
   } catch {

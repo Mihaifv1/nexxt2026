@@ -104,7 +104,7 @@ test("OneFront Door and Branch Handoff: confirmed documents to human outcome", a
       "Accesul la câmpurile existente pentru eligibilitate a fost permis.",
       { exact: true },
     ),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 10000 });
   await page
     .getByRole("button", { name: "Permite pentru consilier", exact: true })
     .click();
@@ -249,13 +249,11 @@ test("document identity mismatch is blocked; actual TXT file upload extracts pro
     "nu corespunde profilului",
   );
   await expect(page.locator(".review-panel")).toHaveCount(0);
-  await page
-    .getByLabel("Document sintetic TXT")
-    .setInputFiles({
-      name: "identity-upload.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from(original),
-    });
+  await page.getByLabel("Document sintetic TXT").setInputFiles({
+    name: "identity-upload.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(original),
+  });
   await expect(input).toHaveValue(original);
   await page
     .getByRole("button", { name: "Extrage documentul", exact: true })

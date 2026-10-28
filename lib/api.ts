@@ -10,6 +10,17 @@ import { D1Store } from "./store.ts";
 import { Engine, type Actor } from "./engine.ts";
 import type { ProviderConfig } from "./provider.ts";
 import { frontDoorApi } from "./frontdoor/api.ts";
+import { IncidentStore } from "./incidents/store.ts";
+import {
+  IncidentService,
+  InvestigationOrchestrator,
+} from "./incidents/orchestrator.ts";
+import {
+  incidentsApi,
+  incidentCustomerList,
+  incidentMetrics,
+} from "./incidents/api.ts";
+import { dispatchTask } from "./request-tasks.ts";
 export interface ApiEnv extends ProviderConfig {
   DB: D1Database;
   PROFILE_ENCRYPTION_KEY?: string;
@@ -98,7 +109,8 @@ export async function handleApi(
           case_id: c.id,
         })),
       );
-    const isCustomer = path[0] === "customer-requests";
+    const isCustomer =
+      path[0] === "customer-requests" || path[0] === "incident-customer";
     const cookie = request.headers.get("cookie") ?? "";
     const token = cookie
       .split(";")
@@ -135,6 +147,16 @@ export async function handleApi(
       return request.json();
     };
     const key = request.headers.get("Idempotency-Key") ?? "";
+    if (path[0] === "incident-customer") {
+      engine.authorize(["DEMO_CUSTOMER"]);
+      return json(
+        await incidentCustomerList(
+          new IncidentStore(env.DB),
+          owner,
+          actor.customer_id!,
+        ),
+      );
+    }
     if (path[0] === "customer-requests") {
       engine.authorize(["DEMO_CUSTOMER"]);
       const cases = (await store.list(owner)).filter(
@@ -154,12 +176,42 @@ export async function handleApi(
           })),
         );
       if (method === "POST" && path[2] === "responses") {
+        const incidentStore = new IncidentStore(env.DB);
+        const incident = (await incidentStore.list(owner)).find(
+          (c) =>
+            c.customer_id === actor.customer_id &&
+            c.requests.some((r) => r.id === path[1]),
+        );
+        if (incident) {
+          const result = await new IncidentService(
+            incidentStore,
+            owner,
+            actor,
+            env,
+          ).respond(path[1], await body(), key);
+          await dispatchTask(() =>
+            new InvestigationOrchestrator(incidentStore, env).execute(
+              owner,
+              result.job_id,
+            ),
+          );
+          return json(result, 202);
+        }
         const c = cases.find((c) => c.requests.some((r) => r.id === path[1]));
         assert(c, "NOT_FOUND", "Cererea nu există.", 404);
         return json(await engine.respond(c.id, path[1], await body(), key));
       }
     }
     engine.authorize(["B2C_AGENT", "B2C_SUPERVISOR"]);
+    if (path[0] === "incidents")
+      return await incidentsApi(
+        request,
+        env.DB,
+        owner,
+        actor,
+        env,
+        await store.list(owner),
+      );
     if (path[0] === "frontdoor")
       return await frontDoorApi(
         request,
@@ -235,6 +287,11 @@ export async function handleApi(
       const run = (await store.list(owner))
         .flatMap((c) => c.investigations)
         .find((r) => r.id === path[1]);
+      if (!run) {
+        const incidentRun = await new IncidentStore(env.DB).run(owner, path[1]);
+        assert(incidentRun, "NOT_FOUND", "Investigația nu există.", 404);
+        return json(incidentRun);
+      }
       assert(run, "NOT_FOUND", "Investigația nu există.", 404);
       return json(run);
     }
@@ -248,6 +305,10 @@ export async function handleApi(
       const findings = complete.flatMap((r) => r.findings);
       return json({
         total: cases.length,
+        payment_incidents: await incidentMetrics(
+          new IncidentStore(env.DB),
+          owner,
+        ),
         needs_info: cases.filter((c) => c.status === "AWAITING_APPROVAL")
           .length,
         awaiting_customer: cases.filter((c) => c.status === "AWAITING_CUSTOMER")

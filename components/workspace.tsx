@@ -1,5 +1,6 @@
 "use client";
 import CustomerHub from "./customer-hub";
+import IncidentCenter from "./incident-center";
 import {
   useCallback,
   useEffect,
@@ -38,6 +39,7 @@ import {
   LogIn,
   MessageSquare,
   MoreHorizontal,
+  Network,
   Play,
   Plus,
   RotateCcw,
@@ -179,7 +181,16 @@ type CustomerCase = Pick<
   | "requests"
 >;
 export default function Workspace() {
-  const [path, setPath] = useState("/b2c/disputes");
+  const [path, setPath] = useState("/b2c/incidents");
+  const isPayment =
+    path === "/b2c" ||
+    path.startsWith("/b2c/incidents") ||
+    [
+      "/b2c/customer-demo",
+      "/b2c/demo",
+      "/b2c/analytics",
+      "/b2c/audit",
+    ].includes(path);
   const [cases, setCases] = useState<DisputeCase[]>([]);
   const [role, setRole] = useState<Role>("B2C_AGENT");
   const [mode, setMode] = useState("Motor demo determinist");
@@ -235,17 +246,12 @@ export default function Workspace() {
     [api],
   );
   const refresh = useCallback(async () => {
-    const [data, metrics] = await Promise.all([
-      api<DisputeCase[]>("disputes"),
-      api<Record<string, number | null>>("analytics"),
-    ]);
-    setCases(data);
-    setAnalytics(metrics);
+    setCases(await api<DisputeCase[]>("disputes"));
   }, [api]);
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    setPath(location.pathname === "/" ? "/b2c/disputes" : location.pathname);
+    setPath(location.pathname === "/" ? "/b2c/incidents" : location.pathname);
     const initialCustomer = new URLSearchParams(location.search).get(
       "customer",
     );
@@ -282,12 +288,19 @@ export default function Workspace() {
     return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
-    if (loading || !authenticated) return;
+    if (
+      loading ||
+      !authenticated ||
+      isPayment ||
+      path.includes("/intake") ||
+      path.includes("/branch")
+    )
+      return;
     const t = setInterval(() => {
       refresh().catch(() => {});
     }, 1600);
     return () => clearInterval(t);
-  }, [loading, authenticated, refresh]);
+  }, [loading, authenticated, refresh, isPayment, path]);
   const isCustomer = path.includes("/demo/customer");
   useEffect(() => {
     if (!isCustomer || !customerId) return;
@@ -435,19 +448,21 @@ export default function Workspace() {
             a.id.localeCompare(b.id),
     );
   const isHub = path.includes("/intake") || path.includes("/branch");
-  const title = isHub
-    ? path.includes("/branch")
-      ? "Smart Branch Handoff"
-      : "OneFront Door"
-    : isCustomer
-      ? "Simulator client"
-      : isAnalytics
-        ? "Analiză operațională"
-        : isAudit
-          ? "Jurnal de audit"
-          : selected
-            ? "Investigație caz"
-            : "Cazuri de dispută";
+  const title = isPayment
+    ? "Payment Incident Intelligence"
+    : isHub
+      ? path.includes("/branch")
+        ? "Smart Branch Handoff"
+        : "OneFront Door"
+      : isCustomer
+        ? "Simulator client"
+        : isAnalytics
+          ? "Analiză operațională"
+          : isAudit
+            ? "Jurnal de audit"
+            : selected
+              ? "Investigație caz"
+              : "Cazuri de dispută";
   const customerCase = customerCases[0];
   const request = customerCase?.requests
     .filter((r) => r.status === "PENDING")
@@ -465,17 +480,17 @@ export default function Workspace() {
       <aside className="sidebar">
         <a
           className="brand"
-          href="/b2c/disputes"
+          href="/b2c/incidents"
           onClick={(e) => {
             e.preventDefault();
-            navigate("/b2c/disputes");
+            navigate("/b2c/incidents");
           }}
         >
           <span className="brand-symbol">
             <Workflow size={23} />
           </span>
           <span>
-            DisputePilot<span className="brand-country">RO</span>
+            Payment Ops<span className="brand-country">RO</span>
           </span>
         </a>
         <div className="workspace-label">
@@ -485,7 +500,22 @@ export default function Workspace() {
         <nav>
           <button
             className={
-              !isCustomer && !isAnalytics && !isAudit && !isHub
+              isPayment &&
+              !isAnalytics &&
+              !isAudit &&
+              path !== "/b2c/customer-demo" &&
+              path !== "/b2c/demo"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() => navigate("/b2c/incidents")}
+          >
+            <Network size={18} />
+            Incidente de plată
+          </button>
+          <button
+            className={
+              !isPayment && !isCustomer && !isAnalytics && !isAudit && !isHub
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -528,13 +558,32 @@ export default function Workspace() {
           </button>
           <div className="sidebar-section-label second">MEDIU DEMONSTRATIV</div>
           <button
-            className={isCustomer ? "nav-item active" : "nav-item"}
-            onClick={() => openCustomer()}
+            className={
+              path === "/b2c/customer-demo" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("/b2c/customer-demo")}
           >
             <Smartphone size={18} />
-            Simulator client
+            Smart Mobile / Chat
             <ArrowUpRight size={14} className="nav-end" />
           </button>
+          <button
+            className={path === "/b2c/demo" ? "nav-item active" : "nav-item"}
+            onClick={() => navigate("/b2c/demo")}
+          >
+            <Play size={18} />
+            Scenarii demo
+          </button>
+          {!isPayment && (
+            <button
+              className={isCustomer ? "nav-item active" : "nav-item"}
+              onClick={() => openCustomer()}
+            >
+              <Smartphone size={18} />
+              Simulator client
+              <ArrowUpRight size={14} className="nav-end" />
+            </button>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <div className="demo-note">
@@ -651,6 +700,14 @@ export default function Workspace() {
             >
               Se încarcă datele sintetice și sesiunea demo.
             </Empty>
+          ) : isPayment ? (
+            <IncidentCenter
+              key={path}
+              path={path}
+              role={role}
+              mode={mode}
+              onNavigate={navigate}
+            />
           ) : isHub ? (
             <CustomerHub
               key={path}

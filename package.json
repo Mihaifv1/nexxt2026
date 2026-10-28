@@ -13,10 +13,11 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/domain.test.ts tests/frontdoor.test.ts",
+    "test": "tsx --test tests/domain.test.ts tests/frontdoor.test.ts tests/incidents.test.ts",
     "test:e2e": "playwright test",
     "dev:postgres": "tsx server/postgres-server.ts --migrate",
-    "test:postgres": "tsx --test tests/postgres.integration.ts"
+    "test:postgres": "tsx --test tests/postgres.integration.ts",
+    "worker:incidents": "tsx server/incident-worker.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

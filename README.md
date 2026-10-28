@@ -1,5 +1,7 @@
 # DisputePilot RO
 
+Aplicația include acum **Payment Incident Intelligence**: un orchestrator comun pentru DisputePilot, ScamRescue, RoPay Rescue și ATMTrace, cu Human Review, aprobări, simulator comun, coadă persistentă și 16 scenarii. Intrarea principală este `/b2c/incidents`. Vezi [PAYMENT_INCIDENTS.md](PAYMENT_INCIDENTS.md).
+
 Aplicația include și **OneFront Door** (profil canonic, intake și documente) și **Smart Branch Handoff** (dosar consilier, programare și check-in). Vezi [FRONTDOOR.md](FRONTDOOR.md) pentru parcursul complet, noua migrare și configurarea cheii de criptare.
 
 Modul B2C pentru investigarea contestațiilor de plată cu cardul. Interfață în română, date sintetice și control uman al comunicării și al traseului operațional. Nu execută rambursări, blocări de card sau chargeback-uri.
@@ -13,6 +15,8 @@ npm ci
 npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_sweet_ozymandias.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_audit_immutable.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_productive_speed_demon.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_stale_midnight.sql
 npm run dev -- --hostname 127.0.0.1
 ```
 
